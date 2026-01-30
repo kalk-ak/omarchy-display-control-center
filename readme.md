@@ -72,7 +72,7 @@ The application also supports a few command-line arguments:
 🎥 **Demonstration**
 
 <div align="center">
-  <img src="https://github.com/kalk-ak/Stash/tree/master/omarchy-display-control-vid/demo.mp4" alt="Demonstration GIF" width="80%">
+  <img src="https://github.com/kalk-ak/Stash/tree/master/omarchy-display-control-vid/demo.gif" alt="Demonstration GIF" width="80%">
   <p><em>A simple demonstration of the UI controls. (You can replace this with your own GIF)</em></p>
 </div>
 
