@@ -17,9 +17,9 @@ This tool was written and tested on **Omarchy**.
 
 This utility leverages powerful command-line tools to manage your display:
 
--   **`hyprsunset`**: For the "Night Light" feature, the application uses `hyprsunset` to dynamically adjust the screen's color temperature. When you toggle Night Light, it ensures any existing `hyprsunset` instance is gracefully terminated before applying the new setting.
--   **`brightnessctl`**: Screen brightness is controlled by executing `brightnessctl`.
--   **`hyprctl`**: Screen rotation is handled by sending commands to the Hyprland compositor via `hyprctl`.
+- **`hyprsunset`**: For the "Night Light" feature, the application uses `hyprsunset` to dynamically adjust the screen's color temperature. When you toggle Night Light, it ensures any existing `hyprsunset` instance is gracefully terminated before applying the new setting.
+- **`brightnessctl`**: Screen brightness is controlled by executing `brightnessctl`.
+- **`hyprctl`**: Screen rotation is handled by sending commands to the Hyprland compositor via `hyprctl`.
 
 Because of these tools, this application is designed specifically for the **Hyprland** environment.
 
@@ -31,8 +31,8 @@ Because of these tools, this application is designed specifically for the **Hypr
 
 First, ensure you have the necessary build and runtime dependencies.
 
-*   **Build Dependencies**: A C++ compiler (like GCC or Clang), CMake, and `gtkmm-4.0`.
-*   **Runtime Dependencies**: `brightnessctl`, and `hyprland` (which provides `hyprctl` and `hyprsunset`).
+- **Build Dependencies**: A C++ compiler (like GCC or Clang), CMake, and `gtkmm-4.0`.
+- **Runtime Dependencies**: `brightnessctl`, and `hyprland` (which provides `hyprctl` and `hyprsunset`).
 
 **On Arch Linux (and derivatives like Omarchy):**
 
@@ -43,7 +43,7 @@ sudo pacman -S gcc cmake gtkmm4 brightnessctl hyprland
 **2. Clone & Build**
 
 ```bash
-git clone https://github.com/yourusername/omarchy-display-control-center.git
+git clone https://github.com/kalk-ak/omarchy-display-control-center.git
 cd omarchy-display-control-center
 mkdir build
 cd build
@@ -102,3 +102,4 @@ Options:
 📄 **License**
 
 This project is licensed under the MIT License.
+
