@@ -1,4 +1,4 @@
-#include <cstdio> // Required for freopen
+#include <cstdio>
 #include <gtkmm.h>
 #include <iostream>
 #include <string>
