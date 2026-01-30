@@ -56,7 +56,13 @@ make
 You can run the application directly from the `build` directory:
 
 ```bash
-./display_control_center
+./display_control_center -q
+```
+
+or run with logs
+
+```bash
+./display_control_center -v
 ```
 
 Or install it system-wide:
@@ -102,4 +108,3 @@ Options:
 📄 **License**
 
 This project is licensed under the MIT License.
-
