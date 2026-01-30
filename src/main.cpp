@@ -1,12 +1,12 @@
-#include <glibmm.h>
+#include <cstdio> // Required for freopen
 #include <gtkmm.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
-const std::string APP_ID = "com.omarchy.display-control-center";
-constexpr int TEMP_MIN = 2500;
-constexpr int TEMP_MAX = 6500;
+const std::string APP_ID = "com.omarchy.display-control";
+constexpr int TEMP_WARM = 2500; // Night/Warm
+constexpr int TEMP_COLD = 6500; // Day/Cold
 
 const char *CSS = R"(
     window { background-color: #2e3440; color: #eceff4; }
@@ -14,7 +14,7 @@ const char *CSS = R"(
     scale highlight { background-color: #88c0d0; }
     button { margin: 4px; padding: 8px; background-color: #434c5e; border: none; border-radius: 4px; }
     button:hover { background-color: #4c566a; }
-    switch { margin-bottom: 5px; }
+    label { font-size: 16px; margin: 0 10px; }
 )";
 
 class DisplayApp : public Gtk::ApplicationWindow
@@ -40,80 +40,80 @@ class DisplayApp : public Gtk::ApplicationWindow
     sigc::connection m_debounce_conn;
     bool m_verbose;
 
-    // Helper to execute shell commands asynchronously
     void exec(const std::string &cmd)
     {
         if (m_verbose)
-        {
             std::cout << "[CMD]: " << cmd << std::endl;
-        }
-
         try
         {
             Glib::spawn_command_line_async(cmd);
         }
         catch (const Glib::Error &e)
         {
-            std::cerr << "Command failed: " << e.what() << std::endl;
+            std::cerr << e.what() << std::endl;
         }
+    }
+
+    void add_slider_row(Gtk::Box *parent, Gtk::Scale &scale, const std::string &left_icon,
+                        const std::string &right_icon)
+    {
+        auto row = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::HORIZONTAL);
+        auto l_icon = Gtk::make_managed<Gtk::Label>(left_icon);
+        auto r_icon = Gtk::make_managed<Gtk::Label>(right_icon);
+
+        scale.set_hexpand(true);
+
+        row->append(*l_icon);
+        row->append(scale);
+        row->append(*r_icon);
+        parent->append(*row);
     }
 
     void setup_brightness()
     {
-        auto frame = Gtk::make_managed<Gtk::Frame>("☀️ Brightness");
+        auto frame = Gtk::make_managed<Gtk::Frame>("Brightness");
+        auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 5);
+
         m_bright_scale.set_range(1, 100);
         m_bright_scale.set_value(80);
-
-        // Use debounce for brightness too to avoid flooding brightnessctl
         m_bright_scale.signal_value_changed().connect(
             [this]
             { exec("brightnessctl s " + std::to_string((int) m_bright_scale.get_value()) + "%"); });
 
-        frame->set_child(m_bright_scale);
+        add_slider_row(box, m_bright_scale, "🔆", "💡");
+        frame->set_child(*box);
         m_vbox.append(*frame);
     }
 
     void setup_night_light()
     {
-        auto frame = Gtk::make_managed<Gtk::Frame>("🌙 Night Light");
+        auto frame = Gtk::make_managed<Gtk::Frame>("Night Light");
         auto box = Gtk::make_managed<Gtk::Box>(Gtk::Orientation::VERTICAL, 8);
 
         m_night_switch.set_halign(Gtk::Align::CENTER);
 
-        // 6500K is Neutral (Daylight), 2500K is very Warm (Candlelight)
-        m_temp_scale.set_range(TEMP_MIN, TEMP_MAX);
+        m_temp_scale.set_range(TEMP_WARM, TEMP_COLD);
         m_temp_scale.set_value(4500);
         m_temp_scale.set_inverted(true);
-        m_temp_scale.set_sensitive(false);
 
-        // Toggle Switch Logic (Starts/Stops the Daemon)
         m_night_switch.property_active().signal_changed().connect(
             [this]
             {
-                bool active = m_night_switch.get_active();
-                m_temp_scale.set_sensitive(active);
-
-                if (active)
+                if (m_night_switch.get_active())
                 {
-                    // Start the daemon with the current slider value
                     int temp = static_cast<int>(m_temp_scale.get_value());
-                    // We pkill first to ensure we don't spawn multiple instances if state was
-                    // desynced
                     exec("sh -c 'pkill hyprsunset; sleep 0.1; hyprsunset -t " +
                          std::to_string(temp) + "'");
                 }
                 else
                 {
-                    // Kill the daemon completely
                     exec("pkill hyprsunset");
                 }
             });
 
-        // Slider Logic (Uses IPC for smooth transition)
         m_temp_scale.signal_value_changed().connect(
             [this]
             {
-                // Only send updates if the switch is actually on
                 if (!m_night_switch.get_active())
                     return;
 
@@ -121,73 +121,115 @@ class DisplayApp : public Gtk::ApplicationWindow
                 m_debounce_conn = Glib::signal_timeout().connect(
                     [this]()
                     {
-                        update_night_light_ipc();
-                        return false; // Run once per debounce
+                        exec("hyprctl hyprsunset temperature " +
+                             std::to_string((int) m_temp_scale.get_value()));
+                        return false;
                     },
-                    30); // 30ms is fast enough for 30fps+ feel, but prevents flood
+                    30);
             });
 
         box->append(m_night_switch);
-        box->append(m_temp_scale);
+        add_slider_row(box, m_temp_scale, "🌙", "☀️");
+
         frame->set_child(*box);
         m_vbox.append(*frame);
     }
 
-    void update_night_light_ipc()
-    {
-        int temp = static_cast<int>(m_temp_scale.get_value());
-        // Use hyprctl to talk to the running daemon instead of killing it
-        exec("hyprctl hyprsunset temperature " + std::to_string(temp));
-    }
-
     void setup_rotation()
     {
-        auto frame = Gtk::make_managed<Gtk::Frame>("🔄 Screen Rotation");
+        auto frame = Gtk::make_managed<Gtk::Frame>("Screen Rotation");
         auto grid = Gtk::make_managed<Gtk::Grid>();
         grid->set_column_homogeneous(true);
         grid->set_row_spacing(5);
 
-        auto add_rot = [&](const std::string &label, int val, int x, int y)
+        auto add_btn = [&](const std::string &lbl, int val, int x, int y)
         {
-            auto btn = Gtk::make_managed<Gtk::Button>(label);
+            auto btn = Gtk::make_managed<Gtk::Button>(lbl);
             btn->signal_clicked().connect(
                 [this, val] { exec("hyprctl keyword monitor ,transform," + std::to_string(val)); });
             grid->attach(*btn, x, y);
         };
 
-        add_rot("Normal", 0, 1, 0);
-        add_rot("Left", 1, 0, 1);
-        add_rot("Inverted", 2, 1, 2);
-        add_rot("Right", 3, 2, 1);
+        add_btn("Normal", 0, 1, 0);
+        add_btn("Left", 1, 0, 1);
+        add_btn("Inverted", 2, 1, 2);
+        add_btn("Right", 3, 2, 1);
 
         frame->set_child(*grid);
         m_vbox.append(*frame);
     }
 };
 
+void show_help(const char *bin_name)
+{
+    std::cout << "Display Control Utility\n\n"
+              << "Usage: " << bin_name << " [OPTIONS]\n\n"
+              << "Options:\n"
+              << "  -h, --help     Show this help message and exit\n"
+              << "  -v, --verbose  Enable verbose output (log commands to stdout)\n"
+              << "  -q, --quiet    Suppress all output (redirect stdout/stderr to /dev/null)\n";
+}
+
 int main(int argc, char *argv[])
 {
-    // Simple Argument Parsing
     bool verbose = false;
+    bool quiet = false;
+    std::vector<char *> remaining_args;
+    remaining_args.push_back(argv[0]);
+
+    // Manually parse arguments before GTK starts
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];
-        if (arg == "-v" || arg == "--verbose")
+        if (arg == "-h" || arg == "--help")
+        {
+            show_help(argv[0]);
+            return 0;
+        }
+        else if (arg == "-v" || arg == "--verbose")
         {
             verbose = true;
         }
+        else if (arg == "-q" || arg == "--quiet")
+        {
+            quiet = true;
+        }
+        else
+        {
+            remaining_args.push_back(argv[i]);
+        }
     }
 
-    auto app = Gtk::Application::create(APP_ID);
+    if (quiet)
+    {
+        (void) !std::freopen("/dev/null", "w", stdout);
+        (void) !std::freopen("/dev/null", "w", stderr);
+    }
+
+    // use NON_UNIQUE and empty APP_ID to ensure it doesn't try to "proxy" arguments
+    // to another instance
+    auto app = Gtk::Application::create(APP_ID, Gio::Application::Flags::NON_UNIQUE);
+
     app->signal_startup().connect(
-        []
+        [&]
         {
-            auto provider = Gtk::CssProvider::create();
-            provider->load_from_data(CSS);
-            Gtk::StyleContext::add_provider_for_display(Gdk::Display::get_default(), provider,
+            auto css = Gtk::CssProvider::create();
+            css->load_from_data(CSS);
+            Gtk::StyleContext::add_provider_for_display(Gdk::Display::get_default(), css,
                                                         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
         });
 
-    // Pass the verbose flag to the window
-    return app->make_window_and_run<DisplayApp>(argc, argv, verbose);
+    app->signal_activate().connect(
+        [&]
+        {
+            auto window = new DisplayApp(verbose);
+            app->add_window(*window);
+            window->set_visible(true);
+        });
+
+    // Pass the modified args list to GTK (only containing the binary name)
+    int final_argc = remaining_args.size();
+    char **final_argv = remaining_args.data();
+
+    return app->run(final_argc, final_argv);
 }
