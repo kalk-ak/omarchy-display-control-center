@@ -1,6 +1,6 @@
 # 🖥️ Omarchy Display Control Center
 
-`Omarchy Display Control Center` is a lightweight C++ and GTK-based graphical utility for **Hyperland**, designed to provide simple and efficient control over your display settings. It offers a clean, modern interface to manage brightness, color temperature (Night Light), and screen rotation.
+`Omarchy Display Control Center` is a lightweight C++ and GTK-based graphical utility for **Hyprland**, designed to provide simple and efficient control over your display settings. It offers a clean, modern interface to manage brightness, color temperature (Night Light), and screen rotation.
 
 This tool was written and tested on **Omarchy**.
 
@@ -10,8 +10,10 @@ This tool was written and tested on **Omarchy**.
 - **Brightness Control**: Adjust your screen's brightness with a simple slider.
 - **Night Light**: Toggle a blue light filter and adjust its color temperature to reduce eye strain.
 - **Screen Rotation**: Quickly rotate your display to normal, inverted, left, or right orientations.
+- **Resolution & Refresh Rate**: Select a monitor (if multiple are connected), choose a resolution and refresh rate from available modes, and apply with one click. Uses `hyprctl monitors -j` and `hyprctl keyword monitor`.
+- **Omarchy Theme Integration**: Automatically loads colors from `~/.config/omarchy/theme/colors` or `~/.config/omarchy/theme.conf` and applies them to the UI. Optional file watcher reloads the theme when the file changes. Falls back to a dark theme if no Omarchy theme is found.
 - **Lightweight**: Written in C++ for minimal resource consumption.
-- **Customizable**: The look and feel can be easily tweaked via embedded CSS.
+- **Customizable**: The look and feel can be easily tweaked via Omarchy theme or embedded CSS.
 
 💡 **Under the Hood**
 
@@ -19,9 +21,9 @@ This utility leverages powerful command-line tools to manage your display:
 
 - **`hyprsunset`**: For the "Night Light" feature, the application uses `hyprsunset` to dynamically adjust the screen's color temperature. When you toggle Night Light, it ensures any existing `hyprsunset` instance is gracefully terminated before applying the new setting.
 - **`brightnessctl`**: Screen brightness is controlled by executing `brightnessctl`.
-- **`hyprctl`**: Screen rotation is handled by sending commands to the Hyprland compositor via `hyprctl`.
+- **`hyprctl`**: Screen rotation and resolution/refresh rate are handled by sending commands to the Hyprland compositor via `hyprctl` (e.g. `hyprctl monitors -j`, `hyprctl keyword monitor ...`).
 
-Because of these tools, this application is designed specifically for the **Hyprland** environment.
+Because of these tools, this application is designed specifically for the **Hyprland** environment. The build uses CMake FetchContent for **nlohmann/json** (header-only); no system JSON package is required.
 
 ---
 
@@ -37,7 +39,7 @@ First, ensure you have the necessary build and runtime dependencies.
 **On Arch Linux (and derivatives like Omarchy):**
 
 ```bash
-sudo pacman -S gcc cmake gtkmm4 brightnessctl hyprland
+sudo pacman -S gcc cmake gtkmm-4.0 brightnessctl hyprland
 ```
 
 **2. Clone & Build**
