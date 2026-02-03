@@ -6,11 +6,36 @@
 #include <string>
 #include <vector>
 
-const std::string APP_ID = "com.omarchy.display-control";
-constexpr int TEMP_WARM = 2500; // Night/Warm
-constexpr int TEMP_COLD = 6500; // Day/Cold
+// ============================================================================
+// Application Constants
+// ============================================================================
 
-// Fallback CSS when theme is not used (kept for reference; ThemeManager provides CSS)
+const std::string APP_ID = "com.omarchy.display-control";
+
+// Temperature range for night light feature
+// These values are standard color temperatures used in display calibration
+constexpr int TEMP_WARM = 2500; // Night/Warm - reduces blue light for evening use
+constexpr int TEMP_COLD = 6500; // Day/Cold - neutral white light for daytime
+
+// ============================================================================
+// Fallback CSS - Redundancy Engineering
+// ============================================================================
+
+/**
+ * FALLBACK_CSS provides a complete embedded stylesheet for redundancy.
+ * 
+ * Why this exists despite ThemeManager:
+ * - Defense in depth: If ThemeManager fails to load, we still have usable styling
+ * - Compile-time guarantee: This CSS is always available, no runtime dependencies
+ * - Reference implementation: Serves as documentation of required CSS selectors
+ * - Emergency fallback: Critical for debugging theme system issues
+ * 
+ * In normal operation, ThemeManager's CSS takes precedence due to
+ * GTK_STYLE_PROVIDER_PRIORITY_APPLICATION. This is kept as a safety net.
+ * 
+ * This is redundancy engineering - we pay a small cost (embedded string) for
+ * guaranteed functionality even if the theme system completely fails.
+ */
 static const char *FALLBACK_CSS = R"(
     window { background-color: #2e3440; color: #eceff4; }
     frame { margin: 10px; border: 1px solid #4c566a; border-radius: 8px; padding: 12px; }
@@ -20,6 +45,20 @@ static const char *FALLBACK_CSS = R"(
     label { font-size: 16px; margin: 0 10px; }
 )";
 
+// ============================================================================
+// DisplayApp - Main Application Window
+// ============================================================================
+
+/**
+ * The main application window containing all display control widgets.
+ * 
+ * This class encapsulates the entire UI and implements all user interactions.
+ * It's designed as a single-window application with multiple functional sections:
+ * - Brightness control (via brightnessctl)
+ * - Night light/blue light filter (via hyprsunset)
+ * - Screen rotation (via hyprctl)
+ * - Resolution and refresh rate configuration (via hyprctl)
+ */
 class DisplayApp : public Gtk::ApplicationWindow
 {
   public:
@@ -282,10 +321,15 @@ int main(int argc, char *argv[])
 {
     bool verbose = false;
     bool quiet = false;
+    // We maintain a modified args list to pass to GTK after removing our custom flags
+    // This is necessary because GTK's command-line parsing would treat our flags
+    // as unknown options and potentially cause errors or warnings. By filtering
+    // them out here, we ensure GTK only sees arguments it understands (or none at all).
     std::vector<char *> remaining_args;
-    remaining_args.push_back(argv[0]);
+    remaining_args.push_back(argv[0]); // Always keep the program name
 
-    // Manually parse arguments before GTK starts
+    // Manual argument parsing before GTK initialization
+    // This gives us control over our custom flags before GTK sees the arguments
     for (int i = 1; i < argc; ++i)
     {
         std::string arg = argv[i];

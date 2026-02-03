@@ -30,7 +30,7 @@ add_executable(display_control_center
 target_link_libraries(display_control_center PRIVATE ${GTKMM_LIBRARIES} nlohmann_json::nlohmann_json)
 
 # Include directories
-target_include_directories(display_control_center PRIVATE ${GTKMM_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(display_control_center PRIVATE ${GTKMM_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/include)
 
 # Compiler flags (needed for GTK)
 target_compile_options(display_control_center PRIVATE ${GTKMM_CFLAGS_OTHER})
